@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idol Charts</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .chart-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .chart-item h3 {
+            margin-top: 0;
+        }
+        .buzz-option {
+            margin-bottom: 10px;
+        }
+        #mensagem {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 class="mt-5">Idol Charts</h1>
+        <div class="alert alert-info">
+            Gasto semanal com buzz: ${{ gasto_semanal }} / ${{ limite_gasto_semanal }}
+        </div>
+
+        <!-- Mensagem de feedback -->
+        <div id="mensagem" class="alert"></div>
+
+        <a href="/lancarmusica.html" class="btn btn-success mt-3">Lançar Nova Música</a>
+
+        <!-- Loja de Buzz -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Loja de Buzz</h3>
+            </div>
+            <div class="card-body">
+                <div class="buzz-option">
+                    <h4>Buzz Barato ($50,000)</h4>
+                    <p>1.000 a 5.000 ULS e 15.000 a 20.000 streams por plataforma.</p>
+                    <button class="btn btn-primary" onclick="comprarBuzz('barato')">Comprar</button>
+                </div>
+                <div class="buzz-option">
+                    <h4>Buzz Mediano ($150,000)</h4>
+                    <p>10.000 a 15.000 ULS e 25.000 a 40.000 streams por plataforma.</p>
+                    <button class="btn btn-primary" onclick="comprarBuzz('mediano')">Comprar</button>
+                </div>
+                <div class="buzz-option">
+                    <h4>Buzz Caro ($300,000)</h4>
+                    <p>20.000 a 25.000 ULS e 45.000 a 60.000 streams por plataforma.</p>
+                    <button class="btn btn-primary" onclick="comprarBuzz('caro')">Comprar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Músicas -->
+        <div id="charts-container" class="mt-4">
+            {% for musica in musicas %}
+                <div class="chart-item">
+                    <h3>{{ musica.nome }}</h3>
+                    <p><strong>Pontos:</strong> {{ musica.pontos|round(2) if musica.pontos else 0 }}</p>
+                    <p><strong>Unique Listeners:</strong> {{ musica.uls|round(2) if musica.uls else 0 }}</p>
+                    <p><strong>Streams:</strong> {{ musica.streams }}</p>
+                    <p><strong>Downloads:</strong> {{ musica.downloads }}</p>
+                    <button class="btn btn-success" onclick="aplicarBuzz({{ musica.id }})">Aplicar Buzz</button>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        let tipoBuzzSelecionado = null;
+
+        // Função para selecionar o tipo de buzz
+        function comprarBuzz(tipo) {
+            tipoBuzzSelecionado = tipo;
+            alert(`Buzz ${tipo} selecionado. Agora escolha a música para aplicar.`);
+        }
+
+        // Função para aplicar buzz à música
+        function aplicarBuzz(musicaId) {
+            if (!tipoBuzzSelecionado) {
+                alert("Selecione um tipo de buzz antes de aplicar.");
+                return;
+            }
+
+            fetch('/comprar_buzz', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    tipo_buzz: tipoBuzzSelecionado,
+                    musica_id: musicaId
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                const mensagemDiv = document.getElementById('mensagem');
+                mensagemDiv.style.display = 'block';
+                if (data.sucesso) {
+                    mensagemDiv.className = 'alert alert-success';
+                    mensagemDiv.innerText = data.mensagem;
+                    setTimeout(() => {
+                        window.location.href = data.redirect;  // Redirecionar para a página inicial
+                    }, 2000);  // Aguardar 2 segundos antes de redirecionar
+                } else {
+                    mensagemDiv.className = 'alert alert-danger';
+                    mensagemDiv.innerText = data.mensagem;
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+            });
+        }
+    </script>
+</body>
+</html>

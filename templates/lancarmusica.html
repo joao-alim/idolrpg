@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lançar Música - Idol</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .form-group {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Lançar Nova Música</h1>
+        <form method="POST">
+            <div class="form-group">
+                <label for="nome">Nome da Música:</label>
+                <input type="text" class="form-control" id="nome" name="nome" required>
+            </div>
+            <div class="form-group">
+                <label for="genero_principal">Gênero Principal:</label>
+                <input type="text" class="form-control" id="genero_principal" name="genero_principal" required>
+            </div>
+            <div class="form-group">
+                <label for="genero_secundario">Gênero Secundário (opcional):</label>
+                <input type="text" class="form-control" id="genero_secundario" name="genero_secundario">
+            </div>
+            <div class="form-group">
+                <label for="genero_terciario">Gênero Terciário (opcional):</label>
+                <input type="text" class="form-control" id="genero_terciario" name="genero_terciario">
+            </div>
+            <button type="submit" class="btn btn-primary">Lançar Música</button>
+        </form>
+    </div>
+</body>
+</html>
