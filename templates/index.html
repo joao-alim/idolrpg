@@ -71,7 +71,7 @@
                     <p><strong>Unique Listeners:</strong> {{ musica.uls|round(2) if musica.uls else 0 }}</p>
                     <p><strong>Streams:</strong> {{ musica.streams }}</p>
                     <p><strong>Downloads:</strong> {{ musica.downloads }}</p>
-                    <button class="btn btn-success" onclick="aplicarBuzz({{ musica.id }})">Aplicar Buzz</button>
+                    <button class="btn btn-success" onclick="aplicarBuzz({musica_id})">Aplicar Buzz</button>
                 </div>
             {% endfor %}
         </div>

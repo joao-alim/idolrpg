@@ -7,17 +7,15 @@ import mysql.connector
 app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta_aqui'
 
-# Configuração do banco de dados MySQL
 def get_db():
     conn = mysql.connector.connect(
         host="localhost",
-        user="root",  # Substitua pelo seu usuário do MySQL
-        password="vitor3255",  # Substitua pela sua senha do MySQL
-        database="idolrpg"  # Nome do banco de dados
+        user="root",
+        password="vitor3255",
+        database="idolrpg"
     )
     return conn
 
-# Função para inicializar o banco de dados
 def init_db():
     with app.app_context():
         db = get_db()
@@ -29,7 +27,6 @@ def init_db():
                     cursor.execute(command)
         db.commit()
 
-# Rota para a página de lançar músicas
 @app.route('/lancar_musica', methods=['GET', 'POST'])
 def lancar_musica():
     if 'user_id' not in session:
@@ -40,7 +37,7 @@ def lancar_musica():
         genero_principal = request.form['genero_principal']
         genero_secundario = request.form.get('genero_secundario', '')
         genero_terciario = request.form.get('genero_terciario', '')
-        data_lancamento = datetime.now().strftime('%Y-%m-%d')  # Data atual
+        data_lancamento = datetime.now().strftime('%Y-%m-%d')
 
         db = get_db()
         cursor = db.cursor()
@@ -55,7 +52,6 @@ def lancar_musica():
 
     return render_template('lancar_musica.html')
 
-# Rota para aplicar buzz a uma música
 @app.route('/aplicar_buzz/<int:musica_id>', methods=['POST'])
 def aplicar_buzz(musica_id):
     if 'user_id' not in session:
@@ -92,18 +88,16 @@ def aplicar_buzz(musica_id):
 
     return jsonify({"sucesso": True, "mensagem": f"Buzz aplicado com sucesso! ULS: +{uls}, Streams: +{streams}"})
 
-# Função para calcular pontos e unique listeners
 def calcular_pontos_e_uls(streams, downloads, buzz):
     pontos_downloads = (downloads // 1000) * 10
     pontos_streams = ((streams + buzz) // 1000) * 50
     pontos_totais = pontos_downloads + pontos_streams
 
-    percentual_uls = random.uniform(0.4, 0.6)  # Entre 40% e 60%
+    percentual_uls = random.uniform(0.4, 0.6)
     uls = int((streams + buzz) * percentual_uls)
 
     return pontos_totais, uls
 
-# Função para atualizar os charts
 def atualizar_charts():
     with app.app_context():
         db = get_db()
@@ -118,25 +112,20 @@ def atualizar_charts():
 
             pontos, uls = calcular_pontos_e_uls(streams, downloads, buzz)
 
-            # Diminuir 10% a cada hora
             pontos *= 0.9
             uls *= 0.9
 
-            # Verificar se a música completou uma semana
             if datetime.now() >= data_lancamento + timedelta(days=7):
-                pontos *= 0.5  # Queda de 50%
+                pontos *= 0.5
                 uls *= 0.5
 
-            # Atualizar os dados da música
             cursor.execute('UPDATE musicas SET pontos = %s, uls = %s WHERE id = %s', (pontos, uls, musica['id']))
         db.commit()
 
-# Agendamento da atualização dos charts
 scheduler = BackgroundScheduler()
-scheduler.add_job(atualizar_charts, 'interval', hours=1)  # Atualizar a cada hora
+scheduler.add_job(atualizar_charts, 'interval', hours=1)
 scheduler.start()
 
-# Rotas
 @app.route('/')
 def home():
     if 'user_id' not in session:
@@ -221,8 +210,6 @@ def comprar_buzz():
     cursor.execute('INSERT INTO compras (usuario_id, musica_id, tipo_buzz, custo, uls, streams, data) VALUES (%s, %s, %s, %s, %s, %s, CURDATE())', (session['user_id'], musica_id, tipo_buzz, custo, uls, streams))
     cursor.execute('UPDATE musicas SET buzz = buzz + %s WHERE id = %s', (streams, musica_id))
     db.commit()
-
-    # Redirecionar para a página inicial após a compra
     return jsonify({"sucesso": True, "mensagem": f"Buzz aplicado com sucesso! ULS: +{uls}, Streams: +{streams}", "redirect": url_for('home')})
 
 if __name__ == '__main__':
