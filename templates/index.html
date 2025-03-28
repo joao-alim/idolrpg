@@ -5,146 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Idol RPG - Dashboard</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .feature-card {
+            transition: all 0.3s;
+            min-height: 200px;
+        }
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <!-- Barra de navegação -->
+    <div class="container-fluid py-4">
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
             <a class="navbar-brand" href="#">IDOL RPG</a>
             <div class="ml-auto">
-                <a href="{{ url_for('lancarmusica') }}" class="btn btn-outline-light mr-2">Lançar Música</a>
                 <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">Sair</a>
             </div>
         </nav>
 
-        <!-- Mensagens Flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show">
-                        {{ message }}
-                        <button type="button" class="close" data-dismiss="alert">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-<!-- Seção de Status - Versão Corrigida -->
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Limite Semanal de Buzz</h5>
-                {% set gasto = gasto_semanal|default(0)|float %}
-                {% set limite = limite_gasto_semanal|default(600000)|float %}
-                
-                {# Cálculo seguro da porcentagem #}
-                {% set porcentagem = (gasto / [limite, 1]|max) * 100 %}
-                {% if porcentagem > 100 %}
-                    {% set porcentagem = 100 %}
-                {% endif %}
-                {% set porcentagem = porcentagem|round(2) %}
-                
-                <div class="progress">
-                    <div class="progress-bar progress-bar-weekly bg-{{ 'danger' if gasto > 450000 else 'warning' if gasto > 300000 else 'success' }}" 
-                         role="progressbar" 
-                         style="width: {{ porcentagem }}%" 
-                         aria-valuenow="{{ gasto }}" 
-                         aria-valuemin="0" 
-                         aria-valuemax="{{ limite }}">
-                        {{ gasto|format_currency }} / {{ limite|format_currency }}
-                    </div>
-                </div>
-                <small class="text-muted">O limite é reiniciado toda semana</small>
-            </div>
-        </div>
-    </div>
-</div>
-
- <!-- Opções de Buzz -->
-<div class="card-body text-center">
-    <button id="buzzBarato" class="btn buzz-btn btn-primary mr-2">
-        Buzz Barato<br>
-        <small>50.000 | +1K-5K ULS</small>
-    </button>
-    <button id="buzzMediano" class="btn buzz-btn btn-warning mr-2">
-        Buzz Mediano<br>
-        <small>150.000 | +10K-15K ULS</small>
-    </button>
-    <button id="buzzCaro" class="btn buzz-btn btn-danger">
-        Buzz Caro<br>
-        <small>300.000 | +20K-25K ULS</small>
-    </button>
-</div>
-
-        <!-- Lista de Músicas -->
         <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5>Suas Músicas</h5>
-                        <span class="badge badge-primary">{{ musicas|length }} músicas</span>
+            <div class="col-md-4 mb-4">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <h3>🎵 Lançar Música</h3>
+                        <p class="text-muted">Adicione novas músicas ao seu catálogo</p>
+                        <a href="{{ url_for('lancarmusica') }}" class="btn btn-primary mt-3">Acessar</a>
                     </div>
-                    <div class="card-body">
-                        <div id="mensagem" class="alert" style="display: none;"></div>
+                </div>
+            </div>
 
-                        {% if musicas %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="thead-dark">
-                                    <tr>
-                                        <th>Música</th>
-                                        <th>Gêneros</th>
-                                        <th>Streams</th>
-                                        <th>ULS</th>
-                                        <th>Pontos</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for musica in musicas %}
-                                    <tr class="musica-row" data-musica-id="{{ musica.id }}">
-                                        <td>
-                                            <strong>{{ musica.nome }}</strong><br>
-                                            <small class="text-muted">Lançada em {{ musica.data_lancamento|format_date }}</small>
-                                        </td>
-                                        <td>
-                                            {{ musica.genero_principal }}
-                                            {% if musica.genero_secundario %}<br><small>+ {{ musica.genero_secundario }}</small>{% endif %}
-                                        </td>
-                                        <td>{{ (musica.streams + musica.buzz)|format_number }}</td>
-                                        <td>{{ musica.uls|format_number }}</td>
-                                        <td>{{ musica.pontos|round(2) if musica.pontos else 0 }}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-success btn-aplicar-buzz">
-                                                Aplicar Buzz
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="text-center py-4">
-                            <h4>Nenhuma música cadastrada</h4>
-                            <p>Comece lançando sua primeira música!</p>
-                            <a href="{{ url_for('lancarmusica') }}" class="btn btn-primary">Lançar Música</a>
-                        </div>
-                    {% endif %}
+            <div class="col-md-4 mb-4">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <h3>🚀 Comprar Buzz</h3>
+                        <p class="text-muted">Impulsione suas músicas</p>
+                        <a href="{{ url_for('buzz_page') }}" class="btn btn-warning mt-3">Acessar</a>
                     </div>
+                </div>
+            </div>
+
+<div class="col-md-4 mb-4">
+    <div class="card feature-card h-100">
+        <div class="card-body text-center">
+            <h3>📊 Charts</h3>
+            <p class="text-muted">Acompanhe as paradas musicais</p>
+            <a href="{{ url_for('charts') }}" class="btn btn-info mt-3">Acessar</a>
+        </div>
+    </div>
+</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script src="/static/js/scripts.js"></script>
 </body>
 </html>

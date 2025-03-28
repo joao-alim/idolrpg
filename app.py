@@ -5,9 +5,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import mysql.connector
 
 app = Flask(__name__)
-app.secret_key = 'sua_chave_secreta_aqui'  # Mantenha essa chave
+app.secret_key = 'sua_chave_secreta_aqui'
 
-# ========== FILTROS TEMPLATE ==========
 @app.template_filter('format_currency')
 def format_currency(value):
     try:
@@ -33,7 +32,6 @@ def format_number(value):
     except:
         return str(value)
 
-# ========== BANCO DE DADOS ==========
 def get_db():
     try:
         conn = mysql.connector.connect(
@@ -95,7 +93,17 @@ def init_db():
             print(f"Erro ao criar tabelas: {e}")
             db.rollback()
 
-# ========== ROTAS PRINCIPAIS ==========
+@app.route('/debug_routes')
+def debug_routes():
+    routes = []
+    for rule in app.url_map.iter_rules():
+        routes.append({
+            'endpoint': rule.endpoint,
+            'path': str(rule),
+            'methods': sorted(rule.methods)
+        })
+    return jsonify({'routes': routes})
+
 @app.route('/')
 def home():
     if 'user_id' not in session:
@@ -105,11 +113,9 @@ def home():
     cursor = db.cursor(dictionary=True)
     
     try:
-        # Recupera músicas do usuário
         cursor.execute('SELECT * FROM musicas WHERE usuario_id = %s', (session['user_id'],))
         musicas = cursor.fetchall()
         
-        # Calcula gasto semanal
         cursor.execute('''
             SELECT SUM(custo) as total 
             FROM compras 
@@ -163,9 +169,6 @@ def lancarmusica():
 
     return render_template('lancarmusica.html')
 
-# ... (cabeçalho e imports anteriores permanecem iguais)
-
-# ========== ROTAS DE AUTENTICAÇÃO ==========
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -225,7 +228,6 @@ def logout():
     flash('Você foi desconectado', 'info')
     return redirect(url_for('login'))
 
-# ========== ROTAS DE MÚSICAS ==========
 @app.route('/editar_musica/<int:musica_id>', methods=['GET', 'POST'])
 def editar_musica(musica_id):
     if 'user_id' not in session:
@@ -259,7 +261,6 @@ def editar_musica(musica_id):
             flash('Erro ao atualizar música', 'danger')
             db.rollback()
     
-    # Carrega dados da música para edição
     cursor.execute(
         'SELECT * FROM musicas WHERE id = %s AND usuario_id = %s',
         (musica_id, session['user_id'])
@@ -293,7 +294,6 @@ def excluir_musica(musica_id):
     
     return redirect(url_for('home'))
 
-# ========== ROTAS DE RELATÓRIOS ==========
 @app.route('/relatorios')
 def relatorios():
     if 'user_id' not in session:
@@ -303,7 +303,6 @@ def relatorios():
     cursor = db.cursor(dictionary=True)
     
     try:
-        # Músicas mais populares
         cursor.execute('''
             SELECT nome, pontos 
             FROM musicas 
@@ -313,7 +312,6 @@ def relatorios():
         ''', (session['user_id'],))
         top_musicas = cursor.fetchall()
         
-        # Histórico de buzz
         cursor.execute('''
             SELECT m.nome, c.tipo_buzz, c.data, c.streams 
             FROM compras c
@@ -335,114 +333,325 @@ def relatorios():
         flash('Erro ao carregar relatórios', 'danger')
         return redirect(url_for('home'))
 
-# ========== INICIALIZAÇÃO ==========
-if __name__ == '__main__':
-    init_db()  # Garante que as tabelas existam
+@app.route('/buzz', endpoint='buzz_page') 
+def buzz_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
     try:
-        app.run(debug=True, port=5000, host='0.0.0.0')
+        cursor.execute('SELECT * FROM musicas WHERE usuario_id = %s', (session['user_id'],))
+        musicas = cursor.fetchall()
+        
+        cursor.execute('''
+            SELECT SUM(custo) as total FROM compras 
+            WHERE usuario_id = %s AND data >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        ''', (session['user_id'],))
+        gasto_semanal = cursor.fetchone()['total'] or 0
+        
+        return render_template(
+            'buzz.html',
+            musicas=musicas,
+            gasto_semanal=gasto_semanal,
+            limite_gasto_semanal=600000
+        )
+        
     except Exception as e:
-        print(f"Erro ao iniciar servidor: {e}")
-        raise
+        print(f"Erro na página de buzz: {e}")
+        flash("Erro ao carregar dados")
+        return render_template('buzz.html', musicas=[], gasto_semanal=0, limite_gasto_semanal=600000)
 
 @app.route('/comprar_buzz', methods=['POST'])
 def comprar_buzz():
     if 'user_id' not in session:
-        return jsonify({"sucesso": False, "mensagem": "Não autenticado"})
+        return jsonify({"sucesso": False, "mensagem": "Não autenticado"}), 401
 
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"sucesso": False, "mensagem": "Dados inválidos"}), 400
+
         tipo_buzz = data.get("tipo_buzz")
         musica_id = data.get("musica_id")
 
         if not tipo_buzz or not musica_id:
-            return jsonify({"sucesso": False, "mensagem": "Dados incompletos"})
+            return jsonify({"sucesso": False, "mensagem": "Dados incompletos"}), 400
 
-        # Valores originais do seu sistema
-        if tipo_buzz == "barato":
-            custo = 50000
-            uls = random.randint(1000, 5000)
-            streams = random.randint(15000, 20000)
-        elif tipo_buzz == "mediano":
-            custo = 150000
-            uls = random.randint(10000, 15000)
-            streams = random.randint(25000, 40000)
-        elif tipo_buzz == "caro":
-            custo = 300000
-            uls = random.randint(20000, 25000)
-            streams = random.randint(45000, 60000)
-        else:
-            return jsonify({"sucesso": False, "mensagem": "Tipo de buzz inválido"})
+        valores = {
+            "barato": {
+                "custo": 50000,
+                "uls": (1000, 5000),
+                "streams": (15000, 20000),
+                "downloads": (500, 1000)
+            },
+            "mediano": {
+                "custo": 150000,
+                "uls": (10000, 15000),
+                "streams": (25000, 40000),
+                "downloads": (2000, 3000)
+            },
+            "caro": {
+                "custo": 300000,
+                "uls": (20000, 25000),
+                "streams": (45000, 60000),
+                "downloads": (5000, 7000)
+            }
+        }
+
+        if tipo_buzz not in valores:
+            return jsonify({"sucesso": False, "mensagem": "Tipo de buzz inválido"}), 400
+
+        config = valores[tipo_buzz]
+        uls = random.randint(*config["uls"])
+        streams = random.randint(*config["streams"])
+        downloads = random.randint(*config["downloads"])
 
         db = get_db()
-        cursor = db.cursor(dictionary=True)
-        
-        # Verificação de limite semanal
+        cursor = db.cursor()
+
         cursor.execute('''
-            SELECT SUM(custo) as total 
-            FROM compras 
+            SELECT SUM(custo) as total FROM compras 
             WHERE usuario_id = %s AND data >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
         ''', (session['user_id'],))
-        gasto_semanal = cursor.fetchone()['total'] or 0
+        gasto_semanal = cursor.fetchone()[0] or 0
 
-        if gasto_semanal + custo > 600000:
-            return jsonify({"sucesso": False, "mensagem": "Limite semanal excedido"})
+        if gasto_semanal + config["custo"] > 600000:
+            return jsonify({"sucesso": False, "mensagem": "Limite semanal excedido"}), 400
 
-        # Atualiza a música
+        cursor.execute('''
+            SELECT id FROM musicas WHERE id = %s AND usuario_id = %s
+        ''', (musica_id, session['user_id']))
+        if not cursor.fetchone():
+            return jsonify({"sucesso": False, "mensagem": "Música não encontrada"}), 404
+
         cursor.execute('''
             UPDATE musicas 
-            SET buzz = buzz + %s 
-            WHERE id = %s AND usuario_id = %s
-        ''', (streams, musica_id, session['user_id']))
-        
-        # Registra a compra
+            SET 
+                buzz = buzz + %s,
+                streams = streams + %s,
+                uls = uls + %s,
+                downloads = downloads + %s
+            WHERE id = %s
+        ''', (streams, streams, uls, downloads, musica_id))
+
+
         cursor.execute('''
             INSERT INTO compras (
-                usuario_id, musica_id, tipo_buzz, custo, uls, streams, data
-            ) VALUES (%s, %s, %s, %s, %s, %s, CURDATE())
+                usuario_id, musica_id, tipo_buzz, custo, 
+                uls, streams, downloads, data
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, CURDATE())
         ''', (
-            session['user_id'], musica_id, tipo_buzz, custo, uls, streams
+            session['user_id'], musica_id, tipo_buzz, config["custo"],
+            uls, streams, downloads
         ))
-        
+
         db.commit()
+        
         return jsonify({
             "sucesso": True,
-            "mensagem": f"Buzz aplicado! +{streams} streams e +{uls} ULS",
-            "dados": {"streams": streams, "uls": uls}
+            "mensagem": f"Buzz aplicado! +{streams} streams, +{uls} ULS e +{downloads} downloads",
+            "dados": {
+                "streams": streams,
+                "uls": uls,
+                "downloads": downloads,
+                "tipo": tipo_buzz,
+                "limite_restante": 600000 - (gasto_semanal + config["custo"])
+            }
         })
 
+    except mysql.connector.Error as err:
+        print(f"Erro MySQL em comprar_buzz: {err}")
+        db.rollback()
+        return jsonify({
+            "sucesso": False,
+            "mensagem": "Erro no banco de dados",
+            "detalhes": str(err)
+        }), 500
+        
     except Exception as e:
-        print(f"Erro em comprar_buzz: {e}")
-        return jsonify({"sucesso": False, "mensagem": "Erro interno"})
+        print(f"Erro geral em comprar_buzz: {str(e)}")
+        db.rollback()
+        return jsonify({
+            "sucesso": False,
+            "mensagem": "Erro interno no servidor",
+            "detalhes": str(e)
+        }), 500
+    
+@app.route('/charts')
+def charts():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        cursor.execute('''
+            SELECT m.nome, m.genero_principal, m.streams, m.buzz, m.uls, m.downloads,
+                   m.pontos, u.username as artista
+            FROM musicas m
+            JOIN usuarios u ON m.usuario_id = u.id
+            ORDER BY pontos DESC
+            LIMIT 10
+        ''')
+        top_global = cursor.fetchall()
+        
+        cursor.execute('''
+            SELECT nome, genero_principal, streams, buzz, uls, downloads, pontos
+            FROM musicas
+            WHERE usuario_id = %s
+            ORDER BY pontos DESC
+            LIMIT 5
+        ''', (session['user_id'],))
+        top_usuario = cursor.fetchall()
+        
+        cursor.execute('''
+            SELECT genero_principal, COUNT(*) as quantas, 
+                   SUM(pontos) as total_pontos
+            FROM musicas
+            GROUP BY genero_principal
+            ORDER BY total_pontos DESC
+            LIMIT 5
+        ''')
+        top_generos = cursor.fetchall()
+        
+        cursor.execute('''
+            SELECT m.nome, m.downloads, u.username as artista
+            FROM musicas m
+            JOIN usuarios u ON m.usuario_id = u.id
+            ORDER BY downloads DESC
+            LIMIT 5
+        ''')
+        top_downloads = cursor.fetchall()
+        
+        cursor.execute('''
+            SELECT m.nome, m.uls, u.username as artista
+            FROM musicas m
+            JOIN usuarios u ON m.usuario_id = u.id
+            ORDER BY uls DESC
+            LIMIT 5
+        ''')
+        top_uls = cursor.fetchall()
+        
+        return render_template(
+            'charts.html',
+            top_global=top_global,
+            top_usuario=top_usuario,
+            top_generos=top_generos,
+            top_downloads=top_downloads,
+            top_uls=top_uls,
+            ultima_atualizacao=datetime.now().strftime('%d/%m/%Y %H:%M'))
+            
+    except Exception as e:
+        print(f"Erro na página de charts: {e}")
+        flash("Erro ao carregar charts")
+        return render_template('charts.html', 
+                            top_global=[], 
+                            top_usuario=[], 
+                            top_generos=[],
+                            top_downloads=[],
+                            top_uls=[],
+                            ultima_atualizacao="N/A")
 
-# ========== AGENDADOR ==========
 def atualizar_charts():
     with app.app_context():
         db = get_db()
         cursor = db.cursor(dictionary=True)
         try:
-            cursor.execute('SELECT * FROM musicas')
+            print(f"Iniciando atualização de charts em {datetime.now()}")
+            
+            cursor.execute('SELECT id, streams, buzz, uls, downloads FROM musicas')
             for musica in cursor.fetchall():
-                # Sua lógica original de cálculo de pontos
-                pontos = ((musica['streams'] + musica['buzz']) // 1000) * 50
-                uls = int((musica['streams'] + musica['buzz']) * 0.5)
+                streams_totais = musica['streams'] + musica['buzz']
+
+                pontos_streams = streams_totais // 1000
+                
+                pontos_downloads = musica['downloads'] * 15
+                
+                pontos_uls = musica['uls'] // 2
+                
+                pontos_totais = pontos_streams + pontos_downloads + pontos_uls
+                
+                if musica['downloads'] >= 10000:
+                    bonus_viral = 1 + (musica['downloads'] // 10000 * 0.05)
+                    pontos_totais = int(pontos_totais * bonus_viral)
+                
+                if musica['uls'] > 5000:
+                    bonus_consistencia = 1 + ((musica['uls'] - 5000) // 1000 * 0.02)
+                    pontos_totais = int(pontos_totais * bonus_consistencia)
+                
+                pontos_minimos = streams_totais // 2000
+                pontos_totais = max(pontos_totais, pontos_minimos)
                 
                 cursor.execute('''
                     UPDATE musicas 
-                    SET pontos = %s, uls = %s 
+                    SET pontos = %s 
                     WHERE id = %s
-                ''', (pontos, uls, musica['id']))
+                ''', (pontos_totais, musica['id']))
+                
+                if musica['id'] == 1:
+                    print(f"\nDebug cálculo de pontos - Música ID {musica['id']}:")
+                    print(f"Streams: {streams_totais} = {pontos_streams} pontos")
+                    print(f"Downloads: {musica['downloads']} = {pontos_downloads} pontos")
+                    print(f"ULS: {musica['uls']} = {pontos_uls} pontos")
+                    print(f"Bônus viral: {bonus_viral if musica['downloads'] >= 10000 else 'N/A'}")
+                    print(f"Bônus consistência: {bonus_consistencia if musica['uls'] > 5000 else 'N/A'}")
+                    print(f"Pontos finais: {pontos_totais}")
+            
             db.commit()
+            print("Charts atualizados com sucesso!")
+            
+            atualizar_ranking_generos()
+            
         except Exception as e:
-            print(f"Erro no agendador: {e}")
+            print(f"Erro ao atualizar charts: {e}")
+            db.rollback()
+            raise
+
+def atualizar_ranking_generos():
+    """Função auxiliar para atualizar o ranking de gêneros musicais"""
+    with app.app_context():
+        db = get_db()
+        cursor = db.cursor()
+        try:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ranking_generos (
+                    genero VARCHAR(50) PRIMARY KEY,
+                    total_pontos BIGINT DEFAULT 0,
+                    total_musicas INT DEFAULT 0,
+                    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            cursor.execute('''
+                INSERT INTO ranking_generos (genero, total_pontos, total_musicas)
+                SELECT 
+                    genero_principal as genero,
+                    SUM(pontos) as total_pontos,
+                    COUNT(*) as total_musicas
+                FROM musicas
+                GROUP BY genero_principal
+                ON DUPLICATE KEY UPDATE
+                    total_pontos = VALUES(total_pontos),
+                    total_musicas = VALUES(total_musicas),
+                    data_atualizacao = CURRENT_TIMESTAMP
+            ''')
+            
+            db.commit()
+            print("Ranking de gêneros atualizado!")
+            
+        except Exception as e:
+            print(f"Erro ao atualizar ranking de gêneros: {e}")
             db.rollback()
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(atualizar_charts, 'interval', hours=1)
 scheduler.start()
 
-# ========== INICIALIZAÇÃO ==========
 if __name__ == '__main__':
-    init_db()  # Garante que as tabelas existam
+    init_db()
     try:
         app.run(debug=True, port=5000)
     except Exception as e:

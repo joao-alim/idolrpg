@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idol RPG - Relatórios</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .card-analytics {
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: transform 0.3s;
+            margin-bottom: 20px;
+            border: none;
+        }
+        .card-analytics:hover {
+            transform: translateY(-5px);
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border-radius: 8px;
+        }
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+        .music-badge {
+            font-size: 0.8rem;
+            margin-right: 5px;
+        }
+        .table-hover tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+            <a class="navbar-brand" href="{{ url_for('home') }}">
+                <i class="fas fa-arrow-left mr-2"></i>Voltar
+            </a>
+            <span class="navbar-text ml-auto">
+                Relatórios Analíticos
+            </span>
+        </nav>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-music mr-2"></i>Total de Músicas</h5>
+                        <h2 class="mb-0">{{ musicas|length }}</h2>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-chart-line mr-2"></i>Streams Totais</h5>
+                        <h2 class="mb-0">
+                            {{ musicas|sum(attribute='streams') + musicas|sum(attribute='buzz')|format_number }}
+                        </h2>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card stat-card" style="background: linear-gradient(135deg, #f46b45 0%, #eea849 100%);">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-users mr-2"></i>ULS Totais</h5>
+                        <h2 class="mb-0">{{ musicas|sum(attribute='uls')|format_number }}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card card-analytics">
+                    <div class="card-header bg-primary text-white">
+                        <h5><i class="fas fa-trophy mr-2"></i>Top 5 Músicas</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if top_musicas %}
+                            <div class="list-group">
+                                {% for musica in top_musicas %}
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ musica.nome }}</h6>
+                                        <span class="badge badge-primary">{{ musica.pontos|round(2) }} pts</span>
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ musica.genero_principal }}
+                                        <span class="badge music-badge badge-info">{{ musica.streams + musica.buzz|format_number }} streams</span>
+                                        <span class="badge music-badge badge-success">{{ musica.uls|format_number }} ULS</span>
+                                    </small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                Nenhuma música com dados suficientes
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card card-analytics">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-bolt mr-2"></i>Últimos Buzz</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if historico_buzz %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Música</th>
+                                            <th>Tipo</th>
+                                            <th>Data</th>
+                                            <th>+Streams</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for buzz in historico_buzz %}
+                                        <tr>
+                                            <td>{{ buzz.nome }}</td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if buzz.tipo_buzz == 'barato' %}badge-secondary
+                                                    {% elif buzz.tipo_buzz == 'mediano' %}badge-warning
+                                                    {% else %}badge-danger{% endif %}">
+                                                    {{ buzz.tipo_buzz|capitalize }}
+                                                </span>
+                                            </td>
+                                            <td>{{ buzz.data.strftime('%d/%m/%Y') }}</td>
+                                            <td>+{{ buzz.streams|format_number }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                Nenhuma compra de buzz registrada
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card card-analytics">
+                    <div class="card-header bg-success text-white">
+                        <h5><i class="fas fa-chart-bar mr-2"></i>Desempenho Mensal</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <p class="text-center text-muted py-5">
+                                <i class="fas fa-chart-pie fa-3x mb-3"></i><br>
+                                Gráficos serão implementados em breve
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

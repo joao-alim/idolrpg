@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idol RPG - Paradas Musicais</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .chart-container {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+            transition: transform 0.3s;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .chart-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+        }
+        .chart-header {
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .badge-position {
+            font-size: 1.1rem;
+            font-weight: bold;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+        .position-1 { background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000; }
+        .position-2 { background: linear-gradient(135deg, #C0C0C0 0%, #A0A0A0 100%); color: #000; }
+        .position-3 { background: linear-gradient(135deg, #CD7F32 0%, #A05A2C 100%); color: #000; }
+        .position-other { background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: #fff; }
+        .last-update {
+            font-size: 0.85rem;
+            color: #6c757d;
+            background: rgba(255,255,255,0.2);
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+        .metric-badge {
+            font-size: 0.75rem;
+            margin-right: 4px;
+            padding: 4px 6px;
+        }
+        .music-row {
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+        }
+        .music-row:hover {
+            background-color: rgba(0, 123, 255, 0.05) !important;
+            border-left: 4px solid #007bff;
+        }
+        .genre-tag {
+            font-size: 0.8rem;
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 3px 8px;
+            border-radius: 10px;
+            margin-right: 5px;
+        }
+        .progress-thin {
+            height: 6px;
+            border-radius: 3px;
+        }
+        .artist-name {
+            font-size: 0.85rem;
+            color: #6c757d;
+            font-style: italic;
+        }
+        .viral-badge {
+            background: linear-gradient(135deg, #ff3366 0%, #ff758c 100%);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+            <a class="navbar-brand" href="{{ url_for('home') }}">
+                <i class="fas fa-arrow-left mr-2"></i> Voltar ao Dashboard
+            </a>
+            <div class="ml-auto d-flex align-items-center">
+                <span class="last-update">
+                    <i class="fas fa-sync-alt mr-1"></i>
+                    Atualizado em: {{ ultima_atualizacao }}
+                </span>
+            </div>
+        </nav>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-fire mr-2"></i>Música Mais Viral</h5>
+                        {% if top_global[0] %}
+                        <p class="card-text">{{ top_global[0].nome }}</p>
+                        <small class="d-block">{{ top_global[0].artista }}</small>
+                        <span class="badge viral-badge mt-2">
+                            {{ top_global[0].pontos|round|int|format_number }} pontos
+                        </span>
+                        {% else %}
+                        <p class="card-text">Nenhuma música viral ainda</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-download mr-2"></i>Top Downloads</h5>
+                        {% if top_downloads[0] %}
+                        <p class="card-text">{{ top_downloads[0].nome }}</p>
+                        <small class="d-block">{{ top_downloads[0].artista }}</small>
+                        <span class="badge bg-light text-dark mt-2">
+                            {{ top_downloads[0].downloads|format_number }} downloads
+                        </span>
+                        {% else %}
+                        <p class="card-text">Nenhum dado de downloads</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-headphones mr-2"></i>Top Engajamento</h5>
+                        {% if top_uls[0] %}
+                        <p class="card-text">{{ top_uls[0].nome }}</p>
+                        <small class="d-block">{{ top_uls[0].artista }}</small>
+                        <span class="badge bg-light text-dark mt-2">
+                            {{ top_uls[0].uls|format_number }} ULS
+                        </span>
+                        {% else %}
+                        <p class="card-text">Nenhum dado de engajamento</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="chart-container">
+                    <div class="card-header bg-primary text-white chart-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="fas fa-globe-americas mr-2"></i>Top 10 Global</h4>
+                            <small>Ordenado por Pontuação Total</small>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if top_global %}
+                        <div class="list-group list-group-flush">
+                            {% for musica in top_global %}
+                            <div class="list-group-item music-row">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge-position 
+                                        {% if loop.index == 1 %}position-1
+                                        {% elif loop.index == 2 %}position-2
+                                        {% elif loop.index == 3 %}position-3
+                                        {% else %}position-other{% endif %}">
+                                        {{ loop.index }}
+                                    </span>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between">
+                                            <h5 class="mb-1">{{ musica.nome }}</h5>
+                                            <span class="badge bg-dark">
+                                                {{ musica.pontos|round|int|format_number }} pts
+                                            </span>
+                                        </div>
+                                        <small class="artist-name d-block">{{ musica.artista }}</small>
+                                        
+                                        <div class="d-flex align-items-center mt-2">
+                                            <span class="genre-tag">{{ musica.genero_principal }}</span>
+                                            
+                                            <span class="badge metric-badge bg-info" 
+                                                  title="Total de Streams">
+                                                <i class="fas fa-play mr-1"></i>
+                                                {{ (musica.streams + musica.buzz)|format_number }}
+                                            </span>
+                                            
+                                            <span class="badge metric-badge bg-success" 
+                                                  title="Downloads">
+                                                <i class="fas fa-download mr-1"></i>
+                                                {{ musica.downloads|format_number }}
+                                            </span>
+                                            
+                                            <span class="badge metric-badge bg-warning text-dark" 
+                                                  title="ULS (User Listening Sessions)">
+                                                <i class="fas fa-headphones mr-1"></i>
+                                                {{ musica.uls|format_number }}
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="progress progress-thin mt-2">
+                                            <div class="progress-bar bg-primary" 
+                                                 style="width: {{ [100, (musica.streams / (top_global[0].streams + top_global[0].buzz)) * 100]|min }}%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            Nenhuma música no ranking global ainda
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="chart-container mb-4">
+                    <div class="card-header bg-success text-white chart-header">
+                        <h4><i class="fas fa-user mr-2"></i>Seu Top 5</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if top_usuario %}
+                        <div class="list-group list-group-flush">
+                            {% for musica in top_usuario %}
+                            <div class="list-group-item music-row py-2">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge-position 
+                                        {% if loop.index == 1 %}position-1
+                                        {% elif loop.index == 2 %}position-2
+                                        {% elif loop.index == 3 %}position-3
+                                        {% else %}position-other{% endif %}">
+                                        {{ loop.index }}
+                                    </span>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ musica.nome }}</h6>
+                                        <div class="d-flex">
+                                            <span class="badge metric-badge bg-success mr-2">
+                                                {{ musica.pontos|round|int|format_number }} pts
+                                            </span>
+                                            <small class="text-muted">
+                                                {{ musica.genero_principal }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            Você não tem músicas no ranking ainda
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="chart-container mb-4">
+                    <div class="card-header bg-info text-white chart-header">
+                        <h4><i class="fas fa-music mr-2"></i>Gêneros em Alta</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if top_generos %}
+                        <ul class="list-group list-group-flush">
+                            {% for genero in top_generos %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <div>
+                                    <span class="badge-position position-other mr-2">
+                                        {{ loop.index }}
+                                    </span>
+                                    {{ genero.genero }}
+                                </div>
+                                <span class="badge bg-primary rounded-pill">
+                                    {{ genero.total_pontos|format_number }} pts
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <div class="alert alert-info">
+                            Dados de gêneros não disponíveis
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="card-header bg-warning text-dark chart-header">
+                        <h4><i class="fas fa-download mr-2"></i>Top Downloads</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if top_downloads %}
+                        <div class="list-group list-group-flush">
+                            {% for musica in top_downloads[:5] %}
+                            <div class="list-group-item music-row py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ musica.nome }}</strong>
+                                        <small class="d-block text-muted">{{ musica.artista }}</small>
+                                    </div>
+                                    <span class="badge bg-success">
+                                        {{ musica.downloads|format_number }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            Nenhum dado de downloads disponível
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        setTimeout(function() {
+            window.location.reload();
+        }, 3600000);
+        
+        function updateLastUpdate() {
+            const now = new Date();
+            const options = { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            const formattedDate = now.toLocaleDateString('pt-BR', options);
+            document.querySelector('.last-update').innerHTML = `
+                <i class="fas fa-sync-alt mr-1"></i>
+                Atualizado em: ${formattedDate}
+            `;
+        }
+        
+        setInterval(updateLastUpdate, 60000);
+        
+        $(function () {
+            $('[title]').tooltip();
+        });
+    </script>
+</body>
+</html>

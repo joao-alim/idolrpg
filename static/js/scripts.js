@@ -1,98 +1,80 @@
 document.addEventListener('DOMContentLoaded', function() {
     let tipoBuzzSelecionado = null;
     let musicaSelecionadaId = null;
+    const mensagemElement = document.getElementById('mensagem');
 
-    // Selecionar tipo de Buzz
+    function mostrarMensagem(texto, tipo = 'success') {
+        mensagemElement.textContent = texto;
+        mensagemElement.className = `alert alert-${tipo}`;
+        mensagemElement.style.display = 'block';
+        setTimeout(() => {
+            mensagemElement.style.display = 'none';
+        }, 3000);
+    }
+
     document.querySelectorAll('.buzz-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            // Remove a seleção de todos os botões
+            tipoBuzzSelecionado = this.getAttribute('data-tipo');
+            
             document.querySelectorAll('.buzz-btn').forEach(b => {
-                b.classList.remove('active', 'border-dark');
+                b.classList.remove('active');
             });
+            this.classList.add('active');
             
-            // Adiciona seleção ao botão clicado
-            this.classList.add('active', 'border-dark');
-            tipoBuzzSelecionado = this.id.replace('buzz', '').toLowerCase();
-            
-            showAlert(`Buzz ${tipoBuzzSelecionado} selecionado. Agora clique em uma música.`, 'info');
+            mostrarMensagem(`Buzz ${tipoBuzzSelecionado} selecionado!`);
         });
     });
 
-    // Selecionar música
     document.querySelectorAll('.musica-row').forEach(row => {
         row.addEventListener('click', function() {
-            musicaSelecionadaId = this.dataset.musicaId;
+            musicaSelecionadaId = this.getAttribute('data-musica-id');
             
-            // Remove a seleção de todas as linhas
             document.querySelectorAll('.musica-row').forEach(r => {
-                r.classList.remove('selecionada');
+                r.classList.remove('table-primary');
             });
             
-            // Adiciona seleção à linha clicada
-            this.classList.add('selecionada');
+            this.classList.add('table-primary');
+            mostrarMensagem(`Música selecionada: ${this.querySelector('strong').textContent}`);
         });
     });
 
-    // Aplicar Buzz
     document.querySelectorAll('.btn-aplicar-buzz').forEach(btn => {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.stopPropagation();
             
             if (!tipoBuzzSelecionado) {
-                showAlert('Selecione um tipo de Buzz primeiro', 'warning');
+                mostrarMensagem('Selecione um tipo de Buzz primeiro!', 'danger');
                 return;
             }
             
             if (!musicaSelecionadaId) {
-                showAlert('Selecione uma música clicando nela', 'warning');
+                mostrarMensagem('Selecione uma música clicando nela!', 'danger');
                 return;
             }
 
-            aplicarBuzz();
+            try {
+                const response = await fetch('/comprar_buzz', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tipo_buzz: tipoBuzzSelecionado,
+                        musica_id: musicaSelecionadaId
+                    }),
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.mensagem || 'Erro no servidor');
+                }
+
+                mostrarMensagem(data.mensagem, 'success');
+                setTimeout(() => window.location.reload(), 1500);
+                
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarMensagem(error.message || 'Falha na comunicação com o servidor', 'danger');
+            }
         });
     });
-
-    function aplicarBuzz() {
-        showAlert('Processando seu Buzz...', 'info');
-        
-        fetch('/comprar_buzz', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                tipo_buzz: tipoBuzzSelecionado,
-                musica_id: musicaSelecionadaId
-            }),
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Erro na rede');
-            return response.json();
-        })
-        .then(data => {
-            if (data.sucesso) {
-                showAlert(data.mensagem, 'success');
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                showAlert(data.mensagem, 'danger');
-            }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            showAlert('Falha ao conectar com o servidor', 'danger');
-        });
-    }
-
-    function showAlert(mensagem, tipo) {
-        const alertDiv = document.getElementById('mensagem');
-        alertDiv.innerHTML = `
-            <div class="alert alert-${tipo} alert-dismissible fade show">
-                ${mensagem}
-                <button type="button" class="close" onclick="this.parentElement.style.display='none'">
-                    <span>&times;</span>
-                </button>
-            </div>
-        `;
-        alertDiv.style.display = 'block';
-    }
 });

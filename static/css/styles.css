@@ -1,16 +1,14 @@
-/* Estilos gerais */
 body {
     padding: 20px;
     background-color: #f8f9fa;
 }
 
-/* Barra de progresso */
 .progress-bar-weekly {
     height: 25px;
     font-weight: bold;
 }
 
-/* Tabela de músicas */
+
 .musica-row {
     cursor: pointer;
     transition: background-color 0.2s;
@@ -24,7 +22,6 @@ body {
     background-color: #cfe2ff !important;
 }
 
-/* Botões de Buzz */
 .buzz-btn {
     min-width: 120px;
     margin: 5px;
@@ -41,7 +38,6 @@ body {
     font-weight: bold;
 }
 
-/* Mensagens */
 #mensagem {
     position: fixed;
     top: 20px;
@@ -51,7 +47,6 @@ body {
     display: none;
 }
 
-/* Responsividade */
 @media (max-width: 768px) {
     .buzz-btn {
         width: 100%;
@@ -59,19 +54,16 @@ body {
     }
 }
 
-/* Estilo para botões selecionados */
 .buzz-btn.active {
     transform: scale(1.05);
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
 }
 
-/* Estilo para linhas selecionadas */
 .musica-row.selecionada {
     background-color: #e7f5ff !important;
     border-left: 4px solid #339af0;
 }
 
-/* Efeito hover */
 .musica-row:hover {
     background-color: #f8f9fa !important;
 }
